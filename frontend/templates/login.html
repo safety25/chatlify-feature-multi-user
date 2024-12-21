@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+    <link rel="stylesheet" href="/static/login.css">
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Login</h1>
+        <form id="login-form">
+            <input type="text" id="username" placeholder="Username" required><br>
+            <input type="password" id="password" placeholder="Password" required><br>
+            <button type="submit">Login</button>
+        </form>
+        <p>Don't have an account? <a href="/signup">Signup</a></p>
+        <div id="response"></div>
+    </div>
+
+    <script>
+        // Initialize the Socket.IO client
+        const socket = io("http://localhost:5002");
+
+        document.getElementById("login-form").onsubmit = async (e) => {
+            e.preventDefault();
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+
+            // Send login request to the backend
+            const response = await fetch("http://localhost:5002/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await response.json();
+
+            if (data.message) {
+                // Save username in sessionStorage
+                sessionStorage.setItem("username", username);
+
+                // Emit a join event to the Socket.IO server
+                socket.emit("join", { username });
+
+                // Redirect to the chat page
+                window.location.href = "/chat";
+            } else {
+                document.getElementById("response").innerText = data.error;
+            }
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"           # Frontend exposed on port 8000
+    depends_on:
+      - backend
+    environment:
+      BACKEND_URL: "http://backend:5002"
+    networks:
+      - chat_network
+
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    ports:
+      - "2181:2181"
+    networks:
+      - chat_network
+  
+  mongo:
+    image: mongo
+    ports:
+      - "27017:27017"
+    networks:
+      - chat_network
+  
+  kafka:
+    image: confluentinc/cp-kafka
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_MAX_REQUEST_SIZE: 200000000
+      KAFKA_MESSAGE_MAX_BYTES: 200000000
+      KAFKA_REPLICA_FETCH_MAX_BYTES: 200000000
+    ports:
+      - "9092:9092"
+
+    networks:
+      - chat_network
+
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5002:5002"           # Backend exposed on port 5002
+    depends_on:
+      - kafka
+    networks:
+      - chat_network
+
+networks:
+  chat_network:
+    driver: bridge
+  

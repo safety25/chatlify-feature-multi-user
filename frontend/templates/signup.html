@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Signup</title>
+    <link rel="stylesheet" href="/static/signup.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Signup</h1>
+        <form id="signup-form">
+            <input type="phone" id="phone" placeholder="Phone" required><br>
+            <input type="text" id="username" placeholder="Username" required><br>
+            <input type="password" id="password" placeholder="Password" required><br>
+            <button type="submit">Signup</button>
+        </form>
+        <p>Already have an account? <a href="/">Login</a></p>
+        <div id="response"></div>
+    </div>
+
+    <script>
+        document.getElementById("signup-form").onsubmit = async (e) => {
+            e.preventDefault();
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+            const phone = document.getElementById("phone").value;
+
+            const response = await fetch("http://localhost:5002/signup", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, password, phone })
+            });
+            const data = await response.json();
+            document.getElementById("response").innerText = data.message || data.error;
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+flask
+flask-socketio
+kafka-python
+eventlet
+pymongo
+werkzeug
+flask-cors
+confluent-kafka

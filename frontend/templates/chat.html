@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h2>Users</h2>
+            <div id="user-list">
+                <!-- Users will be dynamically loaded here -->
+            </div>
+        </div>
+        <div class="chat-section">
+            <div id="chat-window">
+                <div id="chat-messages">
+                    <!-- Messages will be dynamically loaded here -->
+                </div>
+            </div>
+            <div class="chat-input">
+                <input type="text" id="message-input" placeholder="Type a message..." />
+                <button id="send-button">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io("http://localhost:5002");
+        const username = sessionStorage.getItem("username");
+
+        if (!username) {
+            // Redirect to login if no username is stored
+            window.location.href = "/";
+        }
+
+        // Emit a join event to join the user's room
+        socket.emit("join", { username });
+
+        // Fetch all users and populate the user list
+        async function fetchUsers() {
+            const response = await fetch("http://localhost:5002/get_users");
+            const users = await response.json();
+
+            const userList = document.getElementById("user-list");
+            userList.innerHTML = ""; // Clear any existing users
+
+            users.forEach(user => {
+                const userBox = document.createElement("div");
+                userBox.className = "user-box";
+                userBox.innerText = user.username;
+                userBox.onclick = () => loadChat(user.username); // Load chat on click
+                userList.appendChild(userBox);
+            });
+        }
+
+        // Load chat history for a selected user
+        async function loadChat(selectedUser) {
+            document.getElementById("chat-messages").innerHTML = ""; // Clear existing messages
+            const response = await fetch("http://localhost:5002/chat/history", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ sender: username, receiver: selectedUser })
+            });
+            const messages = await response.json();
+
+            messages.forEach(message => {
+                const messageDiv = document.createElement("div");
+                messageDiv.className = message.sender === username ? "message sent" : "message received";
+                messageDiv.innerText = message.content;
+                document.getElementById("chat-messages").appendChild(messageDiv);
+            });
+
+            // Save the selected user for sending messages
+            document.getElementById("send-button").setAttribute("data-receiver", selectedUser);
+        }
+
+        // Send a message
+        document.getElementById("send-button").onclick = async () => {
+            const messageInput = document.getElementById("message-input");
+            const content = messageInput.value.trim();
+            const receiver = document.getElementById("send-button").getAttribute("data-receiver");
+
+            if (!content || !receiver) return;
+
+            // Send the message to the backend
+            await fetch("http://localhost:5002/chat/send", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ sender: username, receiver, content })
+            });
+
+            // Append the message to the chat window
+            const messageDiv = document.createElement("div");
+            messageDiv.className = "message sent";
+            messageDiv.innerText = content;
+            document.getElementById("chat-messages").appendChild(messageDiv);
+
+            messageInput.value = ""; // Clear the input field
+        };
+
+        // Listen for incoming messages
+        socket.on("new_message", (message) => {
+            const chatMessages = document.getElementById("chat-messages");
+            const receiver = document.getElementById("send-button").getAttribute("data-receiver");
+
+            // Only append messages if they are for the currently selected chat
+            if (message.sender === receiver || message.receiver === receiver) {
+                const messageDiv = document.createElement("div");
+                messageDiv.className = message.sender === username ? "message sent" : "message received";
+                messageDiv.innerText = message.content;
+                chatMessages.appendChild(messageDiv);
+            }
+        });
+
+        // Initial fetch of users
+        fetchUsers();
+    </script>
+</body>
+</html>
